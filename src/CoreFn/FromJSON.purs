@@ -14,15 +14,17 @@ import CoreFn.Meta (ConstructorType(..), Meta(..))
 import CoreFn.Module (FilePath(..), Module(..), ModuleImport(..), Version(..))
 import CoreFn.Names (ModuleName(..), ProperName(..), Qualified(..))
 import Data.Array as Array
+import Data.Char (fromCharCode) as Char
 import Data.Either (Either(..))
-import Foreign (F, Foreign, ForeignError(..), fail, readArray, readBoolean, readChar, readInt, readNull, readNumber, readString, typeOf)
+import Data.Maybe (Maybe(..))
+import Data.Newtype (unwrap)
+import Data.String.CodeUnits (fromCharArray) as String
+import Data.Traversable (traverse)
+import Data.Tuple (Tuple(..), uncurry)
+import Foreign (F, Foreign, ForeignError(..), fail, isArray, readArray, readBoolean, readChar, readInt, readNull, readNumber, readString, typeOf)
 import Foreign.Index (index, readIndex, readProp)
 import Foreign.JSON (parseJSON)
 import Foreign.Keys (keys)
-import Data.Maybe (Maybe(..))
-import Data.Newtype (unwrap)
-import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), uncurry)
 
 objectType :: String
 objectType = "object"
@@ -83,8 +85,7 @@ literalFromJSON t = object \json -> do
       NumericLiteral <<< Left <$> (readProp "value" json >>= readInt)
     "NumberLiteral" ->
       NumericLiteral <<< Right <$> (readProp "value" json >>= readNumber)
-    "StringLiteral" ->
-      StringLiteral <$> (readProp "value" json >>= readString)
+    "StringLiteral" -> parseStringLiteral json
     "CharLiteral" ->
       CharLiteral <$> (readProp "value" json >>= readChar)
     "BooleanLiteral" ->
@@ -93,6 +94,18 @@ literalFromJSON t = object \json -> do
     "ObjectLiteral" -> parseObjectLiteral json
     _ -> fail $ ForeignError $ "Unknown Literal: " <> type_
   where
+    parseStringLiteral :: Foreign -> F (Literal a)
+    parseStringLiteral json = do
+      x <- readProp "value" json
+      if isArray x
+        then do
+          xs <- readArray x >>= traverse readInt <#> traverse Char.fromCharCode
+          case map String.fromCharArray xs of
+            Nothing -> fail $ ForeignError $ "Cannot parse string literal: invalid char code"
+            Just parsed -> pure $ StringLiteral parsed
+        else
+          StringLiteral <$> readString x
+
     parseArrayLiteral :: Foreign -> F (Literal a)
     parseArrayLiteral json = do
       val <- readProp "value" json >>= readArray
