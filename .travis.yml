@@ -6,3 +6,4 @@ install:
   - npm install -g spago@0.15.2 purescript@0.13.6
 script:
   - spago test
+  - spago -x testself.dhall test --purs-args "--codegen js,corefn"
