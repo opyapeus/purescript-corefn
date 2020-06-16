@@ -7,7 +7,7 @@ module CoreFn.Module
 
 import Prelude
 
-import CoreFn.Ann (Comment, Ann)
+import CoreFn.Ann (Comment)
 import CoreFn.Expr (Bind)
 import CoreFn.Ident (Ident)
 import CoreFn.Names (ModuleName)
@@ -20,7 +20,7 @@ newtype Module a = Module
   { moduleComments :: Array Comment
   , moduleName :: ModuleName
   , modulePath :: FilePath
-  , moduleImports :: Array ModuleImport
+  , moduleImports :: Array (ModuleImport a)
   , moduleExports :: Array Ident
   , moduleForeign :: Array Ident
   , moduleDecls :: Array (Bind a)
@@ -44,16 +44,16 @@ instance showModule :: Show a => Show (Module a) where
     ")"
 
 
-newtype ModuleImport = ModuleImport
-  { ann :: Ann
+newtype ModuleImport a = ModuleImport
+  { ann :: a
   , moduleName :: ModuleName
   }
 
-derive instance newtypeModuleImport :: Newtype ModuleImport _
-derive instance eqModuleImport :: Eq ModuleImport
-derive instance ordModuleImport :: Ord ModuleImport
+derive instance newtypeModuleImport :: Newtype (ModuleImport a) _
+derive instance eqModuleImport :: Eq a => Eq (ModuleImport a)
+derive instance ordModuleImport :: Ord a => Ord (ModuleImport a)
 
-instance showModuleImport :: Show ModuleImport where
+instance showModuleImport :: Show a => Show (ModuleImport a) where
   show (ModuleImport moduleImport) =
     "(ModuleImport " <>
       "{ ann: " <> show moduleImport.ann <>
